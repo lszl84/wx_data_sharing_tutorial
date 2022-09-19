@@ -159,10 +159,10 @@ void MyFrame::BackgroundTask()
     auto end = std::chrono::steady_clock::now();
     auto diff = end - start;
 
-    auto frontValue = sharedData.front();
-    wxGetApp().CallAfter([this, diff, frontValue]()
+    wxGetApp().CallAfter([this, diff]()
                          {
-                                     this->SetStatusText(wxString::Format("The first number is: %f.\nProcessing time: %.2f [ms]", frontValue, std::chrono::duration<double, std::milli>(diff).count()));
+                                     auto frontValue = sharedData.front();
+                                     this->SetStatusText(wxString::Format("The first number is: %f. Processing time: %.2f [ms]", frontValue, std::chrono::duration<double, std::milli>(diff).count()));
                                      this->Layout();
 
                                      this->backgroundThread.join();
