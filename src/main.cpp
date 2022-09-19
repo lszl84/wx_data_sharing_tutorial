@@ -5,6 +5,8 @@
 
 #include <random>
 
+#include "visualgrid.h"
+
 class MyApp : public wxApp
 {
 public:
@@ -19,10 +21,9 @@ public:
 
 private:
     wxButton *button;
-    wxButton *otherButton;
 
-    wxStaticText *label;
     wxGauge *progressBar;
+    VisualGrid *grid;
 
     bool processing{false};
     std::atomic<bool> quitRequested{false};
@@ -42,7 +43,7 @@ wxIMPLEMENT_APP(MyApp);
 
 bool MyApp::OnInit()
 {
-    MyFrame *frame = new MyFrame("Hello World", wxPoint(150, 150), wxDefaultSize);
+    MyFrame *frame = new MyFrame("Hello World", wxPoint(300, 95), wxDefaultSize);
     frame->Show(true);
     return true;
 }
@@ -51,34 +52,33 @@ MyFrame::MyFrame(const wxString &title, const wxPoint &pos, const wxSize &size)
     : wxFrame(NULL, wxID_ANY, title, pos, size), sharedData(50000)
 {
     RandomizeSharedData();
+    this->CreateStatusBar(1);
 
     wxSizer *sizer = new wxBoxSizer(wxVERTICAL);
-    wxSizer *centeringSizer = new wxBoxSizer(wxHORIZONTAL);
 
-    wxPanel *panel = new wxPanel(this, wxID_ANY, wxDefaultPosition, this->FromDIP(wxSize(320, 240)));
-    wxSizer *panelSizer = new wxBoxSizer(wxVERTICAL);
-
-    label = new wxStaticText(panel, wxID_ANY, "Click Start", wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE_HORIZONTAL);
-    progressBar = new wxGauge(panel, wxID_ANY, 1000);
+    wxPanel *panel = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+    wxSizer *panelSizer = new wxBoxSizer(wxHORIZONTAL);
 
     button = new wxButton(panel, wxID_ANY, "Start");
     button->Bind(wxEVT_BUTTON, &MyFrame::OnButtonClick, this);
 
-    otherButton = new wxButton(panel, wxID_ANY, "Dummy Button");
+    progressBar = new wxGauge(panel, wxID_ANY, 1000, wxDefaultPosition, this->FromDIP(wxSize(320, 20)));
 
-    panelSizer->Add(label, 1, wxEXPAND | wxALL, this->FromDIP(20));
-    panelSizer->Add(progressBar, 1, wxEXPAND | wxALL, this->FromDIP(20));
-    panelSizer->Add(button, 0, wxALIGN_CENTER | wxALL, this->FromDIP(5));
-    panelSizer->Add(otherButton, 0, wxALIGN_CENTER | wxBOTTOM, this->FromDIP(20));
+    panelSizer->Add(button, 0, wxALIGN_CENTER | wxRIGHT, this->FromDIP(5));
+    panelSizer->Add(progressBar, 0, wxALIGN_CENTER);
+
+    grid = new VisualGrid(this, wxID_ANY, wxDefaultPosition, this->FromDIP(wxSize(1000, 800)), 250, sharedData);
 
     panel->SetSizer(panelSizer);
 
-    centeringSizer->Add(panel, 0, wxALIGN_CENTER);
-    sizer->Add(centeringSizer, 1, wxALIGN_CENTER);
+    sizer->Add(panel, 0, wxEXPAND | wxALL, this->FromDIP(5));
+    sizer->Add(grid, 0, wxCENTER | wxLEFT | wxRIGHT | wxBOTTOM, this->FromDIP(5));
 
     this->SetSizerAndFit(sizer);
 
     this->Bind(wxEVT_CLOSE_WINDOW, &MyFrame::OnClose, this);
+
+    this->SetStatusText("Click Start.", 0);
 }
 
 void MyFrame::OnButtonClick(wxCommandEvent &e)
@@ -126,14 +126,15 @@ void MyFrame::BackgroundTask()
     int n = sharedData.size();
     wxGetApp().CallAfter([this, n]()
                          {
-                                     this->label->SetLabelText(wxString::Format("Sorting the array of %d elements...", n));
+                                     this->SetStatusText(wxString::Format("Sorting the array of %d elements...", n));
                                      this->Layout(); });
 
     auto start = std::chrono::steady_clock::now();
     for (int i = 0; i < n - 1; i++)
     {
         wxGetApp().CallAfter([this, n, i]()
-                             { this->progressBar->SetValue(i * this->progressBar->GetRange() / (n - 2)); });
+                             { this->progressBar->SetValue(i * this->progressBar->GetRange() / (n - 2)); 
+                             this->grid->Refresh(); });
 
         if (this->quitRequested)
         {
@@ -161,7 +162,7 @@ void MyFrame::BackgroundTask()
     auto frontValue = sharedData.front();
     wxGetApp().CallAfter([this, diff, frontValue]()
                          {
-                                     this->label->SetLabelText(wxString::Format("The first number is: %f.\nProcessing time: %.2f [ms]", frontValue, std::chrono::duration<double, std::milli>(diff).count()));
+                                     this->SetStatusText(wxString::Format("The first number is: %f.\nProcessing time: %.2f [ms]", frontValue, std::chrono::duration<double, std::milli>(diff).count()));
                                      this->Layout();
 
                                      this->backgroundThread.join();
