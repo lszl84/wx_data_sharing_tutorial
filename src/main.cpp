@@ -39,6 +39,9 @@ private:
 
     void BackgroundTask();
     void RandomizeSharedData();
+
+    wxTimer *refreshTimer;
+    static constexpr int RefreshTimerId = 6612;
 };
 
 wxIMPLEMENT_APP(MyApp);
@@ -81,6 +84,14 @@ MyFrame::MyFrame(const wxString &title, const wxPoint &pos, const wxSize &size)
     this->Bind(wxEVT_CLOSE_WINDOW, &MyFrame::OnClose, this);
 
     this->SetStatusText("Click Start.", 0);
+
+    this->refreshTimer = new wxTimer(this, RefreshTimerId);
+    this->Bind(
+        wxEVT_TIMER, [this](wxTimerEvent &)
+        { this->grid->Refresh(); },
+        RefreshTimerId);
+
+    this->refreshTimer->Start(150);
 }
 
 void MyFrame::OnButtonClick(wxCommandEvent &e)
@@ -136,8 +147,7 @@ void MyFrame::BackgroundTask()
     for (int i = 0; i < n - 1; i++)
     {
         wxGetApp().CallAfter([this, n, i]()
-                             { this->progressBar->SetValue(i * this->progressBar->GetRange() / (n - 2)); 
-                             this->grid->Refresh(); });
+                             { this->progressBar->SetValue(i * this->progressBar->GetRange() / (n - 2)); });
 
         if (this->quitRequested)
         {
