@@ -108,6 +108,7 @@ void MyFrame::OnButtonClick(wxCommandEvent &e)
 
 void MyFrame::OnClose(wxCloseEvent &e)
 {
+    this->refreshTimer->Stop();
     if (this->processing)
     {
         e.Veto();
